@@ -4,3 +4,6 @@
 https://www.hacker101.com/resources.html
 https://portswigger.net/web-security
 https://www.hacksplaining.com/
+https://www.sentinelone.com/cybersecurity-101/
+https://hacktricks.wiki/en/index.html
+https://www.makingsoftware.com/
