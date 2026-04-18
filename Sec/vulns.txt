@@ -1,0 +1,84 @@
+
+=> Vulnerabilities
+
+Web Vulnerabilities:
+- Injection Attacks:
+    - SQL Injection (SQLi)
+    - NoSQL Injection (NoSQLi)
+    - OS Command Injection
+    - LDAP Injection
+    - XML Injection
+    - XPath Injection
+    - Expression Language Injection
+    - Server-Side Template Injection (SSTI)
+    - XML External Entity (XXE) Injection
+    - GraphQL Injection
+- Cross-Site Attacks:
+    - Cross-Site Scripting (XSS) – Reflected, Stored, DOM-based
+    - Cross-Site Request Forgery (CSRF)
+    - Clickjacking (UI Redressing)
+    - Cross-Origin Resource Sharing (CORS) Misconfiguration
+- Access Control & Authorization:
+    - Broken Access Control (BAC)
+    - Insecure Direct Object References (IDOR)
+    - Mass Assignment
+    - Path Traversal (Directory Traversal)
+    - File Inclusion (Local/Remote File Inclusion – LFI/RFI)
+- Authentication & Session Management:
+    - Authentication Flaws (Weak passwords, brute force, etc.)
+    - Session Management Flaws (Session fixation, session hijacking, insecure session storage)
+    - JWT Vulnerabilities (Algorithm confusion, none algorithm, weak secrets)
+    - OAuth Misconfiguration (Redirect URI manipulation, token leakage)
+    - SAML SSO Vulnerabilities (XML signature wrapping, assertion injection)
+    - Cookie Security Misconfigurations (Missing HttpOnly, Secure, SameSite flags)
+- Server-Side Issues:
+    - Server-Side Request Forgery (SSRF)
+    - HTTP Host Header Injection
+    - CRLF Injection (HTTP Response Splitting)
+    - Insecure Deserialization
+    - Prototype Pollution
+    - Race Condition
+    - Rate Limiting Bypass
+    - HTTP Request Smuggling
+    - HTTP Parameter Pollution (HPP)
+- File & Resource Handling:
+    - Unrestricted File Upload (Malicious file execution, MIME type bypass)
+    - Magic Byte Bypass (File upload with manipulated magic bytes)
+    - Null Byte Injection (Bypass file extension checks)
+- Cache & Redirection:
+    - Open Redirect
+    - Web Cache Poisoning
+    - Web Cache Deception
+    - Response Manipulation (Parameter pollution, status code injection)
+- Web-Specific Features:
+    - WebSocket Vulnerabilities (Cross-site WebSocket hijacking, insecure origin)
+    - Web Storage Vulnerabilities (Insecure client-side storage, XSS leading to storage theft)
+    - HTTP Headers Misconfiguration (Missing security headers: CSP, HSTS, X-Frame-Options)
+
+API-Specific Vulnerabilities:
+- Excessive Data Exposure
+- Improper Assets Management (Deprecated API endpoints)
+- GraphQL API Issues (Introspection enabled, batch queries, depth/limit bypass)
+- JWT & OAuth Misconfiguration
+- Mass Assignment
+- Rate Limiting Bypass
+- Lack of Input Validation (Injection)
+
+Android-Specific Vulnerabilities:
+- Intent Redirection / Intent Spoofing
+- Content Provider Vulnerability (SQL injection, path traversal through content URIs)
+- Insecure Broadcast Receiver (Unprotected broadcasts, data leakage)
+- Activity Hijacking (Task hijacking, activity spoofing)
+- Android Debug Bridge (ADB) Misconfiguration (Production debug enabled)
+- Insecure Data Storage (World-readable files, SQLite databases without encryption)
+- Weak Cryptography (Hardcoded keys, improper IV usage)
+- Root/Jailbreak Detection Bypass
+- Dynamic Code Loading (Unverified DEX/APK loading)
+- Insecure Logging (Sensitive data in Logcat)
+
+Other / Infrastructure:
+- Subdomain Takeover
+- DNS Rebinding
+- SMTP Injection
+- Buffer Overflow (Native code, Android NDK)
+- Format String Attack (Legacy or native components)

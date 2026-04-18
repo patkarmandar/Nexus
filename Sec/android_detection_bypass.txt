@@ -376,3 +376,110 @@ PAIRIP (libpairipcore.so)
 - Harder to hook/bypass than Java-only checks
 - Often uses inline assembly or obfuscated native code
 - Found in: /lib/arm64-v8a/libpairipcore.so
+
+PAIRIP:
+- PAIRIP or libpairipcore.so is a native Android shared library (.so file) used by some mobile applications for security-related checks, especially:
+    - Emulator detection
+    - Root detection
+    - Hooking / instrumentation detection (Frida, Xposed, etc.)
+    - Tamper detection
+- It is commonly seen in apps that use PAIRIP (Pair IP Protection) — a mobile app protection technology.
+- PAIRIP is a commercial mobile app protection solution that:
+    - Protects Android apps against reverse engineering
+    - Detects runtime manipulation
+    - Prevents execution in emulators
+    - Detects debugging tools like Frida
+    - Protects against code tampering and repackaging
+- When an app includes this protection, you’ll typically see: libpairipcore.so inside: /lib/arm64-v8a/
+- Why It’s Used
+    - Developers include libpairipcore.so to:
+    - Prevent dynamic analysis
+    - Stop automated fraud
+    - Protect financial/OTT/enterprise apps
+    - Enforce device integrity checks
+- It usually works alongside:
+    - Native JNI calls
+    - Obfuscated Java/Kotlin code
+    - Encrypted strings
+    - Anti-debug logic
+- libpairipcore.so is very likely performing:
+    - ro.kernel.qemu checks
+    - Build fingerprint checks
+    - Emulator file artifact checks
+    - Frida server detection / anti-instrumentation
+    - ptrace / debugger detection
+    - SELinux state verification
+- That’s why emulator bypass attempts may fail — the detection is happening at native layer, not just Java layer.
+- Technical Level View
+    - It is a:
+    - ELF shared object
+    - Loaded via System.loadLibrary()
+    - Communicates through JNI
+    - Executes C/C++ level integrity checks
+- Because it runs in native space:
+    - Harder to hook
+    - Harder to bypass than Java-only checks
+    - Often uses inline assembly or obfuscated native code
+
+---
+
+
+- Root Detection & Security:
+    - Google uses SafetyNet / Play Integrity API to check for rooting.
+    - Rooted devices may fail checks -> apps like banking, Netflix, UPI may not work.
+    - Magisk tries to bypass these with hiding techniques.
+
+- Technically, What Rooting Does in Android:
+    - Linux Base:
+        - Android is built on Linux.
+        - In Linux/Unix systems, the root user (UID 0) has unrestricted permissions.
+        - Normal Android apps run as isolated users (sandboxed with their own UID).
+    - Root Binary (su):
+        - Root account is disabled by default.
+        - There’s no su binary in /system/bin or /system/xbin.
+        - Apps always run inside a sandbox with their own UID, managed by Zygote + SELinux. This ensures apps can’t just escalate privileges.
+        - Rooting installs the su binary (short for switch user) in the system.
+        - This binary lets processes switch to UID 0 (root) when needed.
+        - Example: An app calls su -> permission prompt -> app runs with root privileges.
+    - Superuser Manager:
+        - Tools like SuperSU or Magisk act as root access managers.
+        - They intercept calls to su and ask the user whether to allow or deny.
+        - Without this, any app could silently gain full control.
+    - Systemless Root (Magisk):
+        - Instead of modifying /system, Magisk patches the boot image.
+        - During boot, Magisk injects itself into the process that starts Android (Zygote) to enable root.
+        - This avoids breaking Verified Boot and allows easier updates.
+    - Effect on Android Security:
+        - With root enabled, apps can:
+            - Mount partitions as read-write (/system, /vendor).
+            - Modify SELinux state (permissive/enforcing).
+            - Hook into system services (e.g., Location, Camera, Play Services).
+        - Basically bypassing the sandboxing model of Android.
+
+Magisk:
+- Magisk is a modern systemless rooting framework for Android. It was created by topjohnwu and is the standard way to root devices today.
+- Key Points:
+    - Systemless Root
+    - Unlike older methods (SuperSU) that modified /system, Magisk patches the boot image instead.
+    - This means root is injected during boot, without touching system partitions.
+- Benefits:
+    - Easier OTA updates.
+    - Can pass Verified Boot checks.
+    - Easier to uninstall/disable.
+- Magisk Manager:
+    - Magisk Manager was the companion app for Magisk (the systemless root solution).
+    - It provided a user interface to manage everything related to Magisk.
+    - Today, its features are integrated directly into the Magisk app (the manager isn’t separate anymore).
+- Root Access (su):
+    - Magisk installs the su binary and manages root requests.
+    - Apps that request root get a prompt, controlled by the Magisk app.
+- Modules System:
+    - Magisk supports modules (similar to plugins).
+    - Modules can change system behavior, add features (ad-block, theming, performance tweaks).
+- MagiskHide / Zygisk:
+    - Magisk used to include MagiskHide to hide root from banking/DRM apps.
+    - Modern Magisk uses Zygisk (Magisk inside Zygote) + DenyList for finer control.
+- SafetyNet / Play Integrity Bypass:
+    - Many apps check if the device is rooted.
+    - Magisk tries to “mask” modifications so these apps continue working.
+    - Success depends on Google’s updates and tricks used by the user.
