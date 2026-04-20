@@ -29,6 +29,7 @@ katana -u https://example.com -kf robots.txt,sitemap.xml -d 5 | tee -a katana.tx
 wpscan --url https://example.com --enumerate u,ap,at -o wpscan.txt --format cli-no-color
 wapiti -u https://example.com -m all --color -o wapiti.txt --format txt
 nuclei -u https://example.com -severity low,medium,high,critical -rl 10 -c 10 -o nuclei.txt
+sudo docker run -d -p 443:443 --name openvas mikesplain/openvas
 
 nmap --script whois-domain --script-args whois-domain.target=example.com example.com -oN nmap_whois.txt
 nmap -p 53 --script dns-brute,dns-recursion,dns-service-discovery,dns-zone-transfer example.com -oN nmap_dns.txt

