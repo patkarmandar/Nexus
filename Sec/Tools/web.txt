@@ -15,22 +15,6 @@ dnsrecon -d https://example.com -t std,axfr,brt,rvl,goo,bing | tee dns_dnsrecon.
 dnsenum --enum --threads 10 --dnsserver 8.8.8.8 https://example.com | tee dns_dnsenum.txt
 masscan example.com -p80,443
 
-waybackurls https://example.com | tee waybackurls.txt
-getJS --url https://example.com --complete --output getjs.txt
-paramspider -d https://example.com | tee paramspider.txt
-python linkfinder.py -i https://example.com -o cli | tee - linkfinder.txt
-retire https://example.com --outputformat text --outputpath retire.txt
-getallurls https://example.com -o gau.txt
-gobuster dir -u https://example.com -w /usr/share/seclists/Discovery/Web-Content/big.txt --exclude-length 4472 -o gobuster.txt
-dirsearch -u https://example.com -w /usr/share/seclists/Discovery/Web-Content/big.txt -t 50 -o dirsearch.txt
-
-nikto -h https://example.com | tee nikto.txt
-katana -u https://example.com -kf robots.txt,sitemap.xml -d 5 | tee -a katana.txt
-wpscan --url https://example.com --enumerate u,ap,at -o wpscan.txt --format cli-no-color
-wapiti -u https://example.com -m all --color -o wapiti.txt --format txt
-nuclei -u https://example.com -severity low,medium,high,critical -rl 10 -c 10 -o nuclei.txt
-sudo docker run -d -p 443:443 --name openvas mikesplain/openvas
-
 nmap --script whois-domain --script-args whois-domain.target=example.com example.com -oN nmap_whois.txt
 nmap -p 53 --script dns-brute,dns-recursion,dns-service-discovery,dns-zone-transfer example.com -oN nmap_dns.txt
 nmap -p 80,443 --script http-headers,http-security-headers example.com -oN nmap_headers.txt
@@ -40,3 +24,22 @@ nmap -p 80,443 --script http-slowloris-check example.com -oN nmap_slowloris.txt
 nmap -p 80,443 --script http-vuln-cve2011-3192 example.com -oN nmap_apache_byterange.txt
 nmap -p- --script vuln example.com -oN nmap_vuln.txt
 nmap -p- -sVC example.com -oN nmap_full.txt
+
+waybackurls https://example.com | tee waybackurls.txt
+getJS --url https://example.com --complete --output getjs.txt
+paramspider -d https://example.com | tee paramspider.txt
+python linkfinder.py -i https://example.com -o cli | tee - linkfinder.txt
+retire https://example.com --outputformat text --outputpath retire.txt
+getallurls https://example.com -o gau.txt
+gobuster dir -u https://example.com -w /usr/share/seclists/Discovery/Web-Content/big.txt --exclude-length 4472 -o gobuster.txt
+dirsearch -u https://example.com -t 50 -o dirsearch.txt
+dirsearch -u https://example.com -w /usr/share/seclists/Discovery/Web-Content/big.txt -t 50 -o dirsearch.txt
+
+nikto -h https://example.com | tee nikto.txt
+katana -u https://example.com -kf robots.txt,sitemap.xml -d 5 | tee -a katana.txt
+wpscan --url https://example.com --enumerate u,ap,at -o wpscan.txt --format cli-no-color
+wapiti -u https://example.com -m all --color -o wapiti.txt --format txt
+nuclei -u https://example.com -severity low,medium,high,critical -rl 10 -c 10 -o nuclei.txt
+sudo docker run -d -p 443:443 --name openvas mikesplain/openvas
+
+sqlmap -u "https://example.com/api/users?id=7" -p id --level 3 --risk 2 --batch

@@ -1,8 +1,6 @@
-
 http://demo.testfire.net
 https://book.hacktricks.wiki/
-https://book.hacktricks.wiki/en/index.html
-https://bootstrapmade.com/
+https://bootstrapmade.com/Amplify-restaurant-template/
 https://checklist.hackwithsingh.com/
 https://clickjacker.io/http://Prompt.ml
 https://conflick0.github.io/CEH/
@@ -17,6 +15,7 @@ https://linuxize.com
 https://linuxjourney.com
 https://linuxopsys.com
 https://linuxsurvival.com
+https://namelix.com/
 https://onecompiler.com/
 https://owasp.org/www-project-secure-headers/
 https://portswigger.net/web-security
